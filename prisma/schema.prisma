@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String   @unique
+  password  String?
+
+  goals     Goal[]
+  habits    Habit[]
+  notes     Note[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model Goal {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  progress    Int      @default(0)
+  completed   Boolean  @default(false)
+  deadline    DateTime?
+
+  userId      String
+  user        User     @relation(fields:[userId], references:[id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+model Habit {
+
+  id String @id @default(uuid())
+
+  name String
+
+  streak Int @default(0)
+
+  completedToday Boolean @default(false)
+
+  lastCompleted DateTime?
+
+
+  userId String
+
+  user User @relation(fields:[userId], references:[id])
+
+
+  createdAt DateTime @default(now())
+
+  logs HabitLog[]
+}
+
+
+model HabitLog {
+  id        String @id @default(uuid())
+  completed Boolean @default(false)
+  date      DateTime @default(now())
+
+  habitId String
+  habit Habit @relation(fields:[habitId], references:[id])
+}
+
+
+model Note {
+  id        String @id @default(uuid())
+  title     String
+  content   String
+
+  userId String
+  user User @relation(fields:[userId], references:[id])
+
+  createdAt DateTime @default(now())
+}
