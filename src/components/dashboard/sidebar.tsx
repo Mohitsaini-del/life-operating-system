@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { FiHome, FiTarget, FiCheckSquare, FiFileText, FiLogOut } from "react-icons/fi";
+import { FiHome, FiTarget, FiCheckSquare, FiFileText, FiLogOut, FiCpu } from "react-icons/fi";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -13,6 +13,7 @@ export default function Sidebar() {
     { name: "Goals", href: "/goals", icon: FiTarget },
     { name: "Habits", href: "/habits", icon: FiCheckSquare },
     { name: "Notes", href: "/notes", icon: FiFileText },
+    { name: "Assistant", href: "/assistant", icon: FiCpu },
   ];
 
   return (
