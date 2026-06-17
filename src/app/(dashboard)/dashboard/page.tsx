@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { 
   FiPlus, 
   FiArrowRight, 
@@ -50,6 +51,11 @@ interface DashboardData {
   productivityScore?: number;
   recentGoals?: Goal[];
   recentHabits?: Habit[];
+  characterLevel?: number;
+  levelProgress?: number;
+  totalXP?: number;
+  focusHoursFormatted?: string;
+  focusSparklineData?: number[];
 }
 
 interface DailyMetric {
@@ -66,6 +72,7 @@ interface AnalyticsData {
 }
 
 export default function Dashboard() {
+  const { data: session } = useSession();
   const [data, setData] = useState<DashboardData | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,6 +82,22 @@ export default function Dashboard() {
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
 
+  async function saveFocusSession(minutes: number) {
+    try {
+      await fetch("/api/focus", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ minutes })
+      });
+      // Reload stats and dynamic levels
+      loadData();
+    } catch (err) {
+      console.error("Failed to save focus session:", err);
+    }
+  }
+
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (timerRunning) {
@@ -82,6 +105,7 @@ export default function Dashboard() {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setTimerRunning(false);
+            saveFocusSession(sessionLength);
             return 0;
           }
           return prev - 1;
@@ -93,7 +117,7 @@ export default function Dashboard() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [timerRunning]);
+  }, [timerRunning, sessionLength]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -177,7 +201,9 @@ export default function Dashboard() {
   const dailyScores = analytics?.dailyData?.map(d => d.productivity) || [20, 40, 30, 70, 50, 80, 87];
   const scoreSparkline = generateSparkline(dailyScores);
 
-  const focusHoursData = [1.5, 2.0, 1.2, 3.0, 2.5, 2.8, 2.6];
+  const focusHoursData = data.focusSparklineData && data.focusSparklineData.length > 0
+    ? data.focusSparklineData
+    : [0, 0, 0, 0, 0, 0, 0];
   const focusSparkline = generateSparkline(focusHoursData);
 
   const currentStreak = data.recentHabits?.reduce((max, h) => Math.max(max, h.streak), 0) || 0;
@@ -204,10 +230,15 @@ export default function Dashboard() {
   const strokeDashoffset = 2 * Math.PI * 54 * (1 - progressFraction);
   const sessionPills = [25, 50, 90];
 
+  const habitsXP = (data.completedHabitsCount || 0) * 50;
+  const goalsXP = (data.completedGoalsCount || 0) * 150;
+  const focusXP = data.totalFocusMinutes || 0;
+  const totalXPCalculated = habitsXP + goalsXP + focusXP;
+
   const xpData = [
-    { name: "Habits", value: (data.completedHabitsCount || 0) * 50 || 50, color: "#4D1A1E" },
-    { name: "Goals", value: (data.completedGoalsCount || 0) * 150 || 150, color: "#5C2429" },
-    { name: "Focus Hours", value: 120, color: "#8C7A7C" }
+    { name: "Habits", value: totalXPCalculated === 0 ? 50 : habitsXP, color: "#4D1A1E" },
+    { name: "Goals", value: totalXPCalculated === 0 ? 150 : goalsXP, color: "#5C2429" },
+    { name: "Focus Hours", value: totalXPCalculated === 0 ? 120 : focusXP, color: "#8C7A7C" }
   ];
 
   const habitsRemaining = (data.habitsCount || 0) - (data.completedHabitsCount || 0);
@@ -218,7 +249,7 @@ export default function Dashboard() {
       <header className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-[#EADEDF] dark:border-zinc-850 pb-5">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
-            Good morning, Aditya! 🍂
+            Good morning, {session?.user?.name || data.userName || "User"}! 🍂
           </h1>
           <p className="text-zinc-400 dark:text-zinc-500 mt-1 text-xs font-bold uppercase tracking-wider">
             Build discipline. Design freedom. {habitsRemaining > 0 ? `You have ${habitsRemaining} habit${habitsRemaining > 1 ? 's' : ''} remaining today.` : "All habits completed today!"}
@@ -307,23 +338,26 @@ export default function Dashboard() {
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Character Level</span>
-              <span className="text-2.5xl font-extrabold text-zinc-900 dark:text-white mt-1">Level 23</span>
+              <span className="text-2.5xl font-extrabold text-zinc-900 dark:text-white mt-1">Level {data.characterLevel || 1}</span>
             </div>
             {/* Hexagon Badge */}
             <div className="relative w-11 h-11 flex items-center justify-center">
               <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full fill-[#FAF0F1] dark:fill-zinc-900 stroke-[#4D1A1E] dark:stroke-rose-400 stroke-[7]">
                 <polygon points="50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5" />
               </svg>
-              <span className="relative font-extrabold text-xs text-[#4D1A1E] dark:text-rose-400">23</span>
+              <span className="relative font-extrabold text-xs text-[#4D1A1E] dark:text-rose-400">{data.characterLevel || 1}</span>
             </div>
           </div>
           <div className="flex flex-col mt-3 pt-2 border-t border-[#FAF7F5] dark:border-zinc-900">
             <div className="flex items-center justify-between text-[9px] font-bold text-zinc-400">
               <span>PROGRESS</span>
-              <span>1,450 / 2,000 XP</span>
+              <span>{data.levelProgress || 0} / 1,000 XP</span>
             </div>
             <div className="w-full bg-[#F3ECE8] dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden mt-1">
-              <div className="bg-[#4D1A1E] dark:bg-rose-400 h-full rounded-full" style={{ width: "72.5%" }} />
+              <div 
+                className="bg-[#4D1A1E] dark:bg-rose-450 h-full rounded-full transition-all duration-300" 
+                style={{ width: `${((data.levelProgress || 0) / 1000) * 100}%` }} 
+              />
             </div>
           </div>
         </div>
@@ -333,7 +367,7 @@ export default function Dashboard() {
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Focus Hours</span>
-              <span className="text-2.5xl font-extrabold text-zinc-900 dark:text-white mt-1">2h 40m</span>
+              <span className="text-2.5xl font-extrabold text-zinc-900 dark:text-white mt-1">{data.focusHoursFormatted || "0h 0m"}</span>
             </div>
             <div className="p-2 bg-[#FAF0F1] dark:bg-zinc-900 border border-[#EADEDF] dark:border-zinc-800 rounded-xl text-[#4D1A1E] dark:text-rose-400">
               <FiCompass className="w-5 h-5" />

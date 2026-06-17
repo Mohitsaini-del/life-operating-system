@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { 
   FiHome, 
   FiTarget, 
@@ -15,6 +16,28 @@ import {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const [level, setLevel] = useState<number>(1);
+
+  const userName = session?.user?.name || "User";
+  const userInitials = userName.charAt(0).toUpperCase();
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const res = await fetch("/api/user/stats");
+        if (res.ok) {
+          const data = await res.json();
+          setLevel(data.level || 1);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user level:", err);
+      }
+    }
+    if (session?.user?.id) {
+      fetchStats();
+    }
+  }, [session]);
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: FiHome },
@@ -25,16 +48,24 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 min-h-screen bg-[#FAF7F5] dark:bg-zinc-950 border-r border-[#EADEDF] dark:border-zinc-850 flex flex-col p-6 text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
+    <aside className="w-64 h-screen shrink-0 bg-[#FAF7F5] dark:bg-zinc-950 border-r border-[#EADEDF] dark:border-zinc-850 flex flex-col p-6 text-zinc-900 dark:text-zinc-50 transition-colors duration-300">
       <div className="flex-1 flex flex-col">
         {/* Logo Section */}
-        <div className="flex flex-col mb-6 pl-2">
-          <span className="text-2xl font-extrabold tracking-wide text-zinc-900 dark:text-white leading-none">
-            LIFE <span className="text-[#4D1A1E] dark:text-rose-450">OS</span>
-          </span>
-          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold tracking-wide mt-1.5 uppercase">
-            Build discipline. Design freedom.
-          </span>
+        <div className="flex items-center gap-2.5 mb-6 pl-1 select-none">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img 
+            src="/logo.png" 
+            alt="LIFE OS Logo" 
+            className="w-7 h-7 rounded-lg object-cover border border-[#EADEDF] dark:border-zinc-800"
+          />
+          <div className="flex flex-col">
+            <span className="text-base font-extrabold tracking-wide text-zinc-900 dark:text-white leading-none">
+              LIFE <span className="text-[#4D1A1E] dark:text-rose-450">OS</span>
+            </span>
+            <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold tracking-wider mt-1 uppercase">
+              v1.0
+            </span>
+          </div>
         </div>
 
         {/* Menu Section */}
@@ -75,7 +106,7 @@ export default function Sidebar() {
             <h5 className="font-extrabold text-[10.5px] leading-tight text-zinc-850 dark:text-zinc-100">Discipline today.</h5>
             <h5 className="font-extrabold text-[10.5px] leading-tight text-zinc-850 dark:text-zinc-100">Freedom tomorrow.</h5>
             <p className="text-[9.5px] text-zinc-400 dark:text-zinc-500 mt-1 font-bold flex items-center gap-1">
-              Keep going, Aditya. 🍂
+              Keep going, {userName}. 🍂
             </p>
           </div>
         </div>
@@ -85,12 +116,12 @@ export default function Sidebar() {
       <div className="flex items-center justify-between pl-1 pr-1 border-t border-[#EADEDF] dark:border-zinc-850 pt-4 mt-auto">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-[#4D1A1E] text-white flex items-center justify-center font-extrabold text-xs shadow-sm">
-            A
+            {userInitials}
           </div>
           <div className="flex items-center gap-1 cursor-pointer">
             <div className="flex flex-col">
-              <span className="text-xs font-extrabold text-zinc-900 dark:text-zinc-50 leading-tight">Aditya</span>
-              <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold tracking-wider">Level 23</span>
+              <span className="text-xs font-extrabold text-zinc-900 dark:text-zinc-50 leading-tight">{userName}</span>
+              <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold tracking-wider">Level {level}</span>
             </div>
             <FiChevronDown className="w-3.5 h-3.5 text-zinc-400" />
           </div>

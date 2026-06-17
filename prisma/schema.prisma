@@ -8,15 +8,16 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String?
-  email     String   @unique
-  password  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  goals     Goal[]
-  habits    Habit[]
-  notes     Note[]
+  id            String         @id @default(uuid())
+  name          String?
+  email         String         @unique
+  password      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  goals         Goal[]
+  habits        Habit[]
+  notes         Note[]
+  focusSessions FocusSession[]
 }
 
 model Goal {
@@ -57,6 +58,14 @@ model Note {
   userId    String
   title     String
   content   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model FocusSession {
+  id        String   @id @default(uuid())
+  userId    String
+  minutes   Int
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 }

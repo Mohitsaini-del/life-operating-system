@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { syncHabitsForUser } from "@/lib/habits";
 
 
 export async function GET() {
@@ -14,6 +15,8 @@ export async function GET() {
       { status: 401 }
     );
 
+
+  await syncHabitsForUser(session.user.id);
 
   const habits = await prisma.habit.findMany({
     where: {
